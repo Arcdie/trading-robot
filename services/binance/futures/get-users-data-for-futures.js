@@ -6,7 +6,7 @@ const {
   sendMessage,
 } = require('../../../controllers/telegram/utils/send-message');
 
-const CONNECTION_NAME = 'TradingRobot:Futures:listenKey';
+const CONNECTION_NAME = 'TradingRobotToBinance:Futures:listenKey';
 
 module.exports = async () => {
   try {

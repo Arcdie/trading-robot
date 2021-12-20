@@ -18,7 +18,7 @@ const {
   ACTION_NAMES,
 } = require('../../../websocket/constants');
 
-const CONNECTION_NAME = 'TradingRobot:Futures:bookTicker';
+const CONNECTION_NAME = 'TradingRobotToBinanceScreener:Futures:bookTicker';
 
 class InstrumentQueue {
   constructor(instrumentName) {
@@ -69,7 +69,7 @@ module.exports = async () => {
 
         sendPongInterval = setInterval(() => {
           client.send(JSON.stringify({ actionName: 'pong' }));
-        }, 30 * 60 * 1000); // 30 minutes
+        }, 10 * 60 * 1000); // 10 minutes
       });
 
       client.on('close', (message) => {
