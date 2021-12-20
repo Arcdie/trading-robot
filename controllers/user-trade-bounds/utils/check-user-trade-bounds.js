@@ -27,8 +27,9 @@ const {
 const checkUserTradeBounds = async ({
   instrumentId,
   instrumentName,
-  askPrice,
-  bidPrice,
+
+  open,
+  close,
 }) => {
   try {
     if (!instrumentId || !isMongoId(instrumentId.toString())) {
@@ -45,17 +46,17 @@ const checkUserTradeBounds = async ({
       };
     }
 
-    if (!askPrice) {
+    if (!open) {
       return {
         status: false,
-        message: 'No askPrice',
+        message: 'No open',
       };
     }
 
-    if (!bidPrice) {
+    if (!close) {
       return {
         status: false,
-        message: 'No bidPrice',
+        message: 'No close',
       };
     }
 
@@ -83,13 +84,11 @@ const checkUserTradeBounds = async ({
     }
 
     await Promise.all(activeUserTradeBounds.map(async bound => {
-      const sidePrice = bound.is_long ? bidPrice : askPrice;
-
-      if ((bound.is_long && sidePrice > bound.takeprofit_price)
-        || (!bound.is_long && sidePrice < bound.takeprofit_price)) {
+      if ((bound.is_long && close > bound.takeprofit_price)
+        || (!bound.is_long && close < bound.takeprofit_price)) {
         const resultCreateStopLossOrder = await createStopLossOrder({
           instrumentName,
-          instrumentPrice: sidePrice,
+          instrumentPrice: close,
           userTradeBoundId: bound.bound_id,
         });
 
@@ -100,8 +99,8 @@ const checkUserTradeBounds = async ({
       }
 
       if (isTestMode) {
-        if ((bound.is_long && bidPrice < bound.stoploss_price)
-          || (!bound.is_long && askPrice > bound.stoploss_price)) {
+        if ((bound.is_long && close < bound.stoploss_price)
+          || (!bound.is_long && close > bound.stoploss_price)) {
           const resultDeactivate = await deactivateUserTradeBound({
             typeExit: TYPES_EXIT.get('CANCELED'),
             instrumentName,
@@ -129,6 +128,15 @@ const checkUserTradeBounds = async ({
     };
   }
 };
+
+/*
+checkUserTradeBounds({
+  instrumentId: '616f0f7190a7836ed8d5e1ed',
+  instrumentName: 'ADAUSDTPERP',
+  askPrice: 95.6,
+  bidPrice: 95.6,
+});
+// */
 
 module.exports = {
   checkUserTradeBounds,

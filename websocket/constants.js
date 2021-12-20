@@ -1,6 +1,6 @@
 const ACTION_NAMES = new Map([
   // data
-  ['futuresBookTicker', 'futuresBookTicker'],
+  ['futuresCandle1mData', 'futuresCandle1mData'],
 
   // strategies
   ['newPriceJump', 'newPriceJump'],

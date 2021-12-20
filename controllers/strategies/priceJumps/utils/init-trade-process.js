@@ -83,7 +83,7 @@ const initTradeProcess = async ({
     const usersIds = ['6176a452ef4c0005812a9729'];
 
     const resultRequestGetInstrument = await getOneByName({
-      instrumentName: `${instrumentName}PERP`,
+      instrumentName,
     });
 
     if (!resultRequestGetInstrument) {
@@ -175,6 +175,7 @@ const initTradeProcess = async ({
         if (isTestMode) {
           const resultActivate = await activateUserTradeBound({
             instrumentName: futuresInstrumentDoc.name,
+            // instrumentPrice: 100,
             instrumentPrice: futuresInstrumentDoc.price,
             myBinanceTradeId: resultCreateUserTradeBound.result.my_binance_trade_id,
           });
@@ -198,6 +199,16 @@ const initTradeProcess = async ({
     };
   }
 };
+
+/*
+initTradeProcess({
+  instrumentId: '616f0f7190a7836ed8d5e1ed',
+  instrumentName: 'ADAUSDTPERP',
+
+  isLong: true,
+  strategyTargetId: '616f0f7190a7836ed8d5e1ed',
+});
+// */
 
 module.exports = {
   initTradeProcess,

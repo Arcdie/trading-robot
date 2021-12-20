@@ -57,7 +57,7 @@ module.exports = async () => {
 
         const resultInit = await initTradeProcess(parsedData.data);
 
-        if (!resultInit || !resultInit.message) {
+        if (!resultInit || !resultInit.status) {
           log.warn(resultInit.message || 'Cant initTradeProcess');
         }
       });

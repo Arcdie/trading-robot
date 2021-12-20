@@ -173,6 +173,7 @@ const createUserTradeBound = async ({
       type_trade: typeTrade,
 
       is_active: false,
+      is_test: isTestMode,
       is_long: side === 'BUY',
       stoploss_percent: stopLossPercent,
       takeprofit_percent: takeProfitPercent,
