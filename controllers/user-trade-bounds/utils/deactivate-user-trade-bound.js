@@ -9,6 +9,10 @@ const {
   TYPES_EXIT,
 } = require('../constants');
 
+const {
+  app: { isTestMode },
+} = require('../../../config');
+
 const UserTradeBound = require('../../../models/UserTradeBound');
 
 const deactivateUserTradeBound = async ({
@@ -105,7 +109,11 @@ const deactivateUserTradeBound = async ({
     await userTradeBound.save();
 
     // logic with redis
-    const keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+    let keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+
+    if (isTestMode) {
+      keyInstrumentTradeBounds += '_TEST';
+    }
 
     await redis.hdelAsync([
       keyInstrumentTradeBounds,

@@ -12,6 +12,14 @@ const {
 } = require('../../../libs/support');
 
 const {
+  cancelUserTradeBound,
+} = require('./cancel-user-trade-bound');
+
+const {
+  sendMessage,
+} = require('../../telegram/utils/send-message');
+
+const {
   newOrder,
 } = require('../../binance/utils/futures/new-order');
 
@@ -121,58 +129,67 @@ const createStopLossOrder = async ({
       const takeProfitPercent = userTradeBound.takeprofit_percent / 100;
 
       const stopLossStepSize = parseFloat((price * stopLossPercent).toFixed(pricePrecision));
-      userTradeBound.profit_step_size = parseFloat((price * takeProfitPercent).toFixed(pricePrecision));
 
-      await (async () => {
-        for (let i = 0; i < 5; i += 1) {
-          if (resultNewOrder) {
-            break;
-          }
+      // if < 2, order will be triggered in price level
+      const profitStepSize = parseFloat(((price * takeProfitPercent) * 2).toFixed(pricePrecision));
 
-          // if i + 1, process will be triggered in price level
-          const profitStepSize = parseFloat(
-            (userTradeBound.profit_step_size * (i + 2)).toFixed(pricePrecision),
-          );
-
-          if (!userTradeBound.stoploss_price) {
-            if (userTradeBound.is_long) {
-              userTradeBound.takeprofit_price = price + profitStepSize;
-              userTradeBound.stoploss_price = price - stopLossStepSize;
-            } else {
-              userTradeBound.takeprofit_price = price - profitStepSize;
-              userTradeBound.stoploss_price = price + stopLossStepSize;
-            }
-          } else {
-            if (userTradeBound.is_long) {
-              userTradeBound.takeprofit_price = price + profitStepSize;
-            } else {
-              userTradeBound.takeprofit_price = price - profitStepSize;
-            }
-          }
-
-          userTradeBound.stoploss_price = parseFloat(userTradeBound.stoploss_price.toFixed(pricePrecision));
-          userTradeBound.takeprofit_price = parseFloat(userTradeBound.takeprofit_price.toFixed(pricePrecision));
-
-          if (isTestMode) {
-            resultNewOrder = { orderId: randStr(8) };
-          } else {
-            resultNewOrder = await sendRequestToCreateNewOrder({
-              isLong: userTradeBound.is_long,
-              quantity: userTradeBound.quantity,
-              stopLossPrice: userTradeBound.stoploss_price,
-              instrumentName: instrumentName.replace('PERP', ''),
-
-              userSecret: userBinanceBound.secret,
-              userApikey: userBinanceBound.apikey,
-            });
-
-            if (!resultNewOrder) {
-              console.log('name, price', instrumentName, instrumentPrice);
-              console.log('stopLossPrice', userTradeBound.stoploss_price);
-            }
-          }
+      if (!userTradeBound.stoploss_price) {
+        if (userTradeBound.is_long) {
+          userTradeBound.takeprofit_price = price + profitStepSize;
+          userTradeBound.stoploss_price = price - stopLossStepSize;
+        } else {
+          userTradeBound.takeprofit_price = price - profitStepSize;
+          userTradeBound.stoploss_price = price + stopLossStepSize;
         }
-      })();
+      } else {
+        if (userTradeBound.is_long) {
+          userTradeBound.takeprofit_price = price + profitStepSize;
+        } else {
+          userTradeBound.takeprofit_price = price - profitStepSize;
+        }
+      }
+
+      userTradeBound.profit_step_size = profitStepSize;
+      userTradeBound.stoploss_price = parseFloat(userTradeBound.stoploss_price.toFixed(pricePrecision));
+      userTradeBound.takeprofit_price = parseFloat(userTradeBound.takeprofit_price.toFixed(pricePrecision));
+
+      if (isTestMode) {
+        resultNewOrder = { orderId: randStr(8) };
+      } else {
+        resultNewOrder = await sendRequestToCreateNewOrder({
+          isLong: userTradeBound.is_long,
+          quantity: userTradeBound.quantity,
+          stopLossPrice: userTradeBound.stoploss_price,
+          instrumentName: instrumentName.replace('PERP', ''),
+
+          userSecret: userBinanceBound.secret,
+          userApikey: userBinanceBound.apikey,
+        });
+
+        if (!resultNewOrder) {
+          const message = `Cant create stoploss order, ${instrumentName}`;
+
+          log.warn(message);
+          await sendMessage(userTradeBound.user_id.toString(), `Не могу создать stoploss заявку:
+  instrument: ${instrumentName};`);
+
+          const resultCancel = await cancelUserTradeBound({
+            instrumentName,
+            userTradeBoundId,
+          });
+
+          if (!resultCancel || !resultCancel.status) {
+            log.warn(resultCancel.message || 'Cant cancelUserTradeBound');
+            await sendMessage(userTradeBound.user_id.toString(), `Не могу закрыть сделку:
+  instrument: ${instrumentName};`);
+          }
+
+          return {
+            status: false,
+            message,
+          };
+        }
+      }
     } else {
       let incrValue = 3;
       let newStopLoss;
@@ -198,88 +215,65 @@ const createStopLossOrder = async ({
         newStopLoss = (newTakeProfit + (userTradeBound.profit_step_size * 2));
       }
 
-      await (async () => {
-        for (let i = 0; i < 5; i += 1) {
-          if (resultNewOrder) {
-            break;
-          }
+      newStopLoss = parseFloat(newStopLoss.toFixed(pricePrecision));
 
-          if (i > 0) {
-            const profitStepSize = parseFloat(
-              (userTradeBound.profit_step_size * (i + 1)).toFixed(pricePrecision),
-            );
+      if (isTestMode) {
+        resultNewOrder = { orderId: randStr(8) };
+      } else {
+        resultNewOrder = await sendRequestToCreateNewOrder({
+          isLong: userTradeBound.is_long,
+          quantity: userTradeBound.quantity,
+          stopLossPrice: newStopLoss,
+          instrumentName: instrumentName.replace('PERP', ''),
 
-            if (userTradeBound.is_long) {
-              newStopLoss = (newTakeProfit - profitStepSize);
-            } else {
-              newStopLoss = (newTakeProfit + profitStepSize);
-            }
-          }
-
-          newStopLoss = parseFloat(newStopLoss.toFixed(pricePrecision));
-
-          if (isTestMode) {
-            resultNewOrder = { orderId: randStr(8) };
-          } else {
-            resultNewOrder = await sendRequestToCreateNewOrder({
-              isLong: userTradeBound.is_long,
-              quantity: userTradeBound.quantity,
-              stopLossPrice: newStopLoss,
-              instrumentName: instrumentName.replace('PERP', ''),
-
-              userSecret: userBinanceBound.secret,
-              userApikey: userBinanceBound.apikey,
-            });
-
-            if (!resultNewOrder) {
-              console.log('name, price', instrumentName, instrumentPrice);
-              console.log('newStopLoss', newStopLoss);
-            }
-          }
-        }
-      })();
-
-      if (!resultNewOrder) {
-        const message = `Cant create stoploss order, ${instrumentName}`;
-        log.warn(message);
-
-        return {
-          status: false,
-          message,
-        };
-      }
-
-      if (!isTestMode) {
-        const timestamp = new Date().getTime();
-        let signatureStr = `timestamp=${timestamp}`;
-
-        const obj = {
-          symbol: instrumentName.replace('PERP', ''),
-          orderId: userTradeBound.binance_stoploss_trade_id,
-        };
-
-        Object.keys(obj).forEach(key => {
-          signatureStr += `&${key}=${obj[key]}`;
+          userSecret: userBinanceBound.secret,
+          userApikey: userBinanceBound.apikey,
         });
 
-        const signature = crypto
-          .createHmac('sha256', userBinanceBound.secret)
-          .update(signatureStr)
-          .digest('hex');
+        if (!resultNewOrder) {
+          const message = `Cant move stoploss order, ${instrumentName}`;
 
-        signatureStr += `&signature=${signature}`;
+          log.warn(message);
+          await sendMessage(userTradeBound.user_id.toString(), `Не могу переставить stoploss заявку:
+  instrument: ${instrumentName};`);
 
-        const resultRequestCancelOrder = await cancelOrder({
-          signature,
-          signatureStr,
-          apikey: userBinanceBound.apikey,
-        });
-
-        if (!resultRequestCancelOrder || !resultRequestCancelOrder.status) {
-          return {
-            status: false,
-            message: resultRequestCancelOrder.message || 'Cant cancelOrder (stoploss order)',
+          resultNewOrder = {
+            orderId: userTradeBound.binance_stoploss_trade_id,
           };
+
+          newStopLoss = userTradeBound.stoploss_price;
+        } else {
+          // cancel prev stop loss order
+          const timestamp = new Date().getTime();
+          let signatureStr = `timestamp=${timestamp}`;
+
+          const obj = {
+            symbol: instrumentName.replace('PERP', ''),
+            orderId: userTradeBound.binance_stoploss_trade_id,
+          };
+
+          Object.keys(obj).forEach(key => {
+            signatureStr += `&${key}=${obj[key]}`;
+          });
+
+          const signature = crypto
+            .createHmac('sha256', userBinanceBound.secret)
+            .update(signatureStr)
+            .digest('hex');
+
+          signatureStr += `&signature=${signature}`;
+
+          const resultRequestCancelOrder = await cancelOrder({
+            signature,
+            signatureStr,
+            apikey: userBinanceBound.apikey,
+          });
+
+          if (!resultRequestCancelOrder || !resultRequestCancelOrder.status) {
+            log.warn(resultRequestCancelOrder.message || 'Cant cancelOrder');
+            await sendMessage(userTradeBound.user_id.toString(), `Не могу отменить прерыдущую stoploss заявку:
+  instrument: ${instrumentName};`);
+          }
         }
       }
 
@@ -292,7 +286,11 @@ const createStopLossOrder = async ({
     await userTradeBound.save();
 
     // logic with redis
-    const keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+    let keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+
+    if (isTestMode) {
+      keyInstrumentTradeBounds += '_TEST';
+    }
 
     await redis.hsetAsync([
       keyInstrumentTradeBounds,

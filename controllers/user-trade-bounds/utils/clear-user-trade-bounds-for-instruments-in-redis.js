@@ -1,9 +1,18 @@
 const redis = require('../../../libs/redis');
 const log = require('../../../libs/logger')(module);
 
+const {
+  app: { isTestMode },
+} = require('../../../config');
+
 const clearUserTradeBoundsForInstrumentsInRedis = async () => {
   try {
-    const key = 'INSTRUMENT:*:USER_TRADE_BOUNDS';
+    let key = 'INSTRUMENT:*:USER_TRADE_BOUNDS';
+
+    if (isTestMode) {
+      key += '_TEST';
+    }
+
     const targetKeys = await redis.keysAsync(key);
 
     await Promise.all(targetKeys.map(async targetKey => {

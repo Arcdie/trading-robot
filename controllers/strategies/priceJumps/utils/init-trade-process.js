@@ -175,7 +175,6 @@ const initTradeProcess = async ({
         if (isTestMode) {
           const resultActivate = await activateUserTradeBound({
             instrumentName: futuresInstrumentDoc.name,
-            // instrumentPrice: 100,
             instrumentPrice: futuresInstrumentDoc.price,
             myBinanceTradeId: resultCreateUserTradeBound.result.my_binance_trade_id,
           });

@@ -5,6 +5,10 @@ const {
 const redis = require('../../../libs/redis');
 const log = require('../../../libs/logger')(module);
 
+const {
+  app: { isTestMode },
+} = require('../../../config');
+
 const UserTradeBound = require('../../../models/UserTradeBound');
 
 const getActiveUserTradeBoundsForInstrument = async ({
@@ -26,7 +30,12 @@ const getActiveUserTradeBoundsForInstrument = async ({
       };
     }
 
-    const keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+    let keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+
+    if (isTestMode) {
+      keyInstrumentTradeBounds += '_TEST';
+    }
+
     const instrumentTradeBounds = await redis.hgetallAsync(keyInstrumentTradeBounds);
 
     if (!instrumentTradeBounds) {

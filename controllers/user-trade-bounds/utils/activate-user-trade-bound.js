@@ -9,6 +9,10 @@ const {
   sendMessage,
 } = require('../../telegram/utils/send-message');
 
+const {
+  app: { isTestMode },
+} = require('../../../config');
+
 const UserTradeBound = require('../../../models/UserTradeBound');
 
 const activateUserTradeBound = async ({
@@ -86,7 +90,11 @@ const activateUserTradeBound = async ({
     const updatedUserTradeBound = resultCreateStopLossOrder.result;
 
     // logic with redis
-    const keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+    let keyInstrumentTradeBounds = `INSTRUMENT:${instrumentName}:USER_TRADE_BOUNDS`;
+
+    if (isTestMode) {
+      keyInstrumentTradeBounds += '_TEST';
+    }
 
     await redis.hsetAsync([
       keyInstrumentTradeBounds,
@@ -98,10 +106,12 @@ const activateUserTradeBound = async ({
       }),
     ]);
 
-    await sendMessage(updatedUserTradeBound.user_id.toString(), `Новая сделка:
+    if (!isTestMode) {
+      await sendMessage(updatedUserTradeBound.user_id.toString(), `Новая сделка:
   instrument: ${instrumentName.replace('PERP', '')};
   side: ${updatedUserTradeBound.is_long ? 'long' : 'short'};
   sum: ${(updatedUserTradeBound.quantity * instrumentPrice).toFixed(1)};`);
+    }
 
     return {
       status: true,
