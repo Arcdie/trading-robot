@@ -46,6 +46,7 @@ const {
 const initTradeProcess = async ({
   instrumentId,
   instrumentName,
+  instrumentPrice,
 
   isLong,
   strategyTargetId,
@@ -69,6 +70,13 @@ const initTradeProcess = async ({
       return {
         status: false,
         message: 'No instrumentName',
+      };
+    }
+
+    if (!instrumentPrice) {
+      return {
+        status: false,
+        message: 'No instrumentPrice',
       };
     }
 
@@ -120,7 +128,6 @@ const initTradeProcess = async ({
 
     const stepSize = futuresInstrumentDoc.step_size;
     const stepSizePrecision = getPrecision(stepSize);
-    const instrumentPrice = parseFloat(futuresInstrumentDoc.price);
     let quantity = WORK_AMOUNT / instrumentPrice;
 
     if (quantity < stepSize) {
@@ -176,7 +183,8 @@ const initTradeProcess = async ({
           const resultActivate = await activateUserTradeBound({
             instrumentName: futuresInstrumentDoc.name,
             // instrumentPrice: 100,
-            instrumentPrice: futuresInstrumentDoc.price,
+
+            instrumentPrice,
             myBinanceTradeId: resultCreateUserTradeBound.result.my_binance_trade_id,
           });
 
