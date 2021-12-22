@@ -28,7 +28,6 @@ const checkUserTradeBounds = async ({
   instrumentId,
   instrumentName,
 
-  open,
   close,
 }) => {
   try {
@@ -43,13 +42,6 @@ const checkUserTradeBounds = async ({
       return {
         status: false,
         message: 'No instrumentName',
-      };
-    }
-
-    if (!open) {
-      return {
-        status: false,
-        message: 'No open',
       };
     }
 
@@ -133,8 +125,7 @@ const checkUserTradeBounds = async ({
 checkUserTradeBounds({
   instrumentId: '616f0f7190a7836ed8d5e1ed',
   instrumentName: 'ADAUSDTPERP',
-  askPrice: 95.6,
-  bidPrice: 95.6,
+  close: 101.1,
 });
 // */
 

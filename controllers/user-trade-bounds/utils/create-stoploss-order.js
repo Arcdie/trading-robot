@@ -131,21 +131,21 @@ const createStopLossOrder = async ({
       const stopLossStepSize = parseFloat((price * stopLossPercent).toFixed(pricePrecision));
 
       // if < 2, order will be triggered in price level
-      const profitStepSize = parseFloat(((price * takeProfitPercent) * 2).toFixed(pricePrecision));
+      const profitStepSize = parseFloat((price * takeProfitPercent).toFixed(pricePrecision));
 
       if (!userTradeBound.stoploss_price) {
         if (userTradeBound.is_long) {
-          userTradeBound.takeprofit_price = price + profitStepSize;
+          userTradeBound.takeprofit_price = price + (profitStepSize * 2);
           userTradeBound.stoploss_price = price - stopLossStepSize;
         } else {
-          userTradeBound.takeprofit_price = price - profitStepSize;
+          userTradeBound.takeprofit_price = price - (profitStepSize * 2);
           userTradeBound.stoploss_price = price + stopLossStepSize;
         }
       } else {
         if (userTradeBound.is_long) {
-          userTradeBound.takeprofit_price = price + profitStepSize;
+          userTradeBound.takeprofit_price = price + (profitStepSize * 2);
         } else {
-          userTradeBound.takeprofit_price = price - profitStepSize;
+          userTradeBound.takeprofit_price = price - (profitStepSize * 2);
         }
       }
 
