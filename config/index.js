@@ -1,12 +1,16 @@
+const fileName = __filename.split('/');
+const projectFolder = fileName[fileName.length - 3];
+
+const isTestMode = projectFolder.includes('-test');
+
 module.exports = {
   app: {
     host: 'localhost',
-    websocketPort: 3102,
-    url: process.env.APP_URL,
-    port: process.env.APP_PORT,
     environment: process.env.NODE_ENV,
+    url: !isTestMode ? process.env.APP_URL : process.env.TEST_APP_URL,
+    port: !isTestMode ? process.env.APP_PORT : process.env.TEST_APP_PORT,
 
-    isTestMode: true,
+    isTestMode,
   },
 
   mongodbConf: {
