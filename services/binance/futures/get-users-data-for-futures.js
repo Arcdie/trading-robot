@@ -108,16 +108,6 @@ module.exports = async () => {
                 c: clientOrderId,
               } = parsedData.o;
 
-              console.log({
-                instrumentName,
-                orderType,
-                originalOrderType,
-                price,
-                status,
-                orderId,
-                clientOrderId,
-              });
-
               if (status === 'FILLED' && ['LIMIT', 'MARKET'].includes(orderType)) {
                 if (originalOrderType === 'MARKET') {
                   const resultActivate = await activateUserTradeBound({
