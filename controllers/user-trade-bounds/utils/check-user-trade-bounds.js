@@ -94,7 +94,7 @@ const checkUserTradeBounds = async ({
         if ((bound.is_long && close < bound.stoploss_price)
           || (!bound.is_long && close > bound.stoploss_price)) {
           const resultDeactivate = await deactivateUserTradeBound({
-            typeExit: TYPES_EXIT.get('CANCELED'),
+            typeExit: TYPES_EXIT.get('DEACTIVATED'),
             instrumentName,
             instrumentPrice: bound.stoploss_price,
             userTradeBoundId: bound.bound_id,
