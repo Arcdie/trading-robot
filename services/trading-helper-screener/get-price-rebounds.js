@@ -56,10 +56,6 @@ module.exports = async () => {
       client.on('message', async bufferData => {
         const parsedData = JSON.parse(bufferData.toString());
 
-        const m = `${isTestMode ? 'Test' : 'Production'}: new strategyTargetId: ${parsedData.strategyTargetId}`;
-        // log.warn(m);
-        console.log(m);
-
         const resultInit = await initTradeProcess(parsedData.data);
 
         if (!resultInit || !resultInit.status) {

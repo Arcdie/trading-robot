@@ -13,6 +13,10 @@ const {
 } = require('../../../../libs/support');
 
 const {
+  sendMessage,
+} = require('../../../telegram/utils/send-message');
+
+const {
   getOneByName,
 } = require('../../../instruments/utils/get-one-by-name');
 
@@ -171,6 +175,9 @@ const initTradeProcess = async ({
       };
 
       const resultCreateUserTradeBound = await createUserTradeBound(requestObj);
+
+      await sendMessage(`${isTestMode ? 'Test' : 'Production'}:InitTradeProcess:
+strategyTargetId: ${strategyTargetId}`);
 
       if (!resultCreateUserTradeBound || !resultCreateUserTradeBound.status) {
         const message = resultCreateUserTradeBound.message || 'Cant createUserTradeBound (fut)';
