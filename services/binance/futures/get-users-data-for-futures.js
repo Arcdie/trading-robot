@@ -11,6 +11,9 @@ const {
   createFuturesListenKey,
 } = require('../../../controllers/binance/utils/futures/create-futures-listen-key');
 
+const figureLevelReboundsUtils = require('../../../controllers/strategies/figureLevelRebounds/utils/check-status');
+
+/*
 const {
   activateUserTradeBound,
 } = require('../../../controllers/user-trade-bounds/utils/activate-user-trade-bound');
@@ -18,6 +21,12 @@ const {
 const {
   deactivateUserTradeBound,
 } = require('../../../controllers/user-trade-bounds/utils/deactivate-user-trade-bound');
+
+
+const {
+  TYPES_EXIT,
+} = require('../../../controllers/user-trade-bounds/constants');
+*/
 
 const {
   getActiveUserBinanceBounds,
@@ -28,9 +37,10 @@ const {
 } = require('../../../config');
 
 const {
-  TYPES_EXIT,
-} = require('../../../controllers/user-trade-bounds/constants');
+  ACTION_NAMES,
+} = require('../../../websocket/constants');
 
+const UserTradeBound = require('../../../models/UserTradeBound');
 const UserBinanceBound = require('../../../models/UserBinanceBound');
 
 const CONNECTION_NAME = 'TradingRobotToBinance:Futures:listenKey';
@@ -103,13 +113,50 @@ module.exports = async () => {
                 o: orderType,
                 ot: originalOrderType,
                 ap: price,
-                X: status,
+                X: orderStatus,
                 i: orderId,
                 c: clientOrderId,
               } = parsedData.o;
 
+              if (orderStatus !== 'NEW') {
+                console.log('ORDER_TRADE_UPDATE', parsedData.o);
+              }
+
+              const userTradeBoundDoc = await UserTradeBound.findOne({
+                binance_trade_id: orderId,
+              }, {
+                is_active: 1,
+                strategy_name: 1,
+              }).exec();
+
+              if (!userTradeBoundDoc || !userTradeBoundDoc.is_active) {
+                return true;
+              }
+
+              if (userTradeBoundDoc.strategy_name === ACTION_NAMES.get('figureLevelRebound')) {
+                if (orderStatus === 'NEW') {
+                  return true;
+                }
+
+                // /*
+                const resultCheckStatus = await figureLevelReboundsUtils.checkStatus({
+                  orderType,
+                  orderStatus,
+                  price: parseFloat(price),
+                  userTradeBoundId: userTradeBoundDoc._id,
+
+                  instrumentName: `${instrumentName}PERP`,
+                });
+
+                if (!resultCheckStatus || !resultCheckStatus.status) {
+                  log.warn(resultCheckStatus.message || 'Cant figureLevelReboundsUtils.checkStatus');
+                }
+                // */
+              }
+
+              /*
               if (status === 'FILLED' && ['LIMIT', 'MARKET'].includes(orderType)) {
-                if (originalOrderType === 'MARKET') {
+                if (['LIMIT', 'MARKET'].includes(originalOrderType)) {
                   const resultActivate = await activateUserTradeBound({
                     myBinanceTradeId: clientOrderId,
                     instrumentPrice: parseFloat(price),
@@ -132,6 +179,7 @@ module.exports = async () => {
                   }
                 }
               }
+              */
 
               break;
             }

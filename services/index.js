@@ -8,7 +8,7 @@ const tradingHelperScreenerProcesses = require('./trading-helper-screener');
 module.exports = async () => {
   try {
     await binanceProcesses();
-    await binanceScreenerProcesses();
+    // await binanceScreenerProcesses();
     await tradingHelperScreenerProcesses();
 
     // check memory

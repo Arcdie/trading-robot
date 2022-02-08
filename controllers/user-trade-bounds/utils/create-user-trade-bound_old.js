@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const moment = require('moment');
 
 const {
   isMongoId,
@@ -8,7 +9,6 @@ const log = require('../../../libs/logger')(module);
 
 const {
   randStr,
-  getPrecision,
 } = require('../../../libs/support');
 
 const {
@@ -16,11 +16,8 @@ const {
 } = require('../../binance/utils/futures/new-order');
 
 const {
-  getOneByName,
-} = require('../../instruments/utils/get-one-by-name');
-
-const {
   TYPES_TRADES,
+  LIMIT_TIME_FOR_NEXT_TRADE,
 } = require('../constants');
 
 const {
@@ -35,7 +32,7 @@ const createUserTradeBound = async ({
   instrumentId,
   instrumentName,
 
-  strategyName,
+  typeTrade,
   strategyTargetId,
 
   takeProfitPercent,
@@ -43,15 +40,10 @@ const createUserTradeBound = async ({
   stopLossPercent,
   stopLossPrice,
 
-  isInitiator,
-
   side,
-  price,
+  type,
   quantity,
-
-  typeTrade,
-
-  originalTradeBoundId,
+  price,
 }) => {
   try {
     if (!userId || !isMongoId(userId.toString())) {
@@ -65,13 +57,6 @@ const createUserTradeBound = async ({
       return {
         status: false,
         message: 'No or invalid instrumentId',
-      };
-    }
-
-    if (!strategyName) {
-      return {
-        status: false,
-        message: 'No strategyName',
       };
     }
 
@@ -96,6 +81,20 @@ const createUserTradeBound = async ({
       };
     }
 
+    if (!type || !['LIMIT', 'MARKET'].includes(type)) {
+      return {
+        status: false,
+        message: 'No or invalid type',
+      };
+    }
+
+    if (!quantity) {
+      return {
+        status: false,
+        message: 'No quantity',
+      };
+    }
+
     if (!typeTrade || !TYPES_TRADES.get(typeTrade)) {
       return {
         status: false,
@@ -103,19 +102,50 @@ const createUserTradeBound = async ({
       };
     }
 
-    if (originalTradeBoundId && !isMongoId(originalTradeBoundId.toString())) {
-      return {
-        status: false,
-        message: 'Invalid originalTradeBoundId',
-      };
-    }
-
-    const isMarketOrder = typeTrade === TYPES_TRADES.get('MARKET');
+    const isMarketOrder = type === 'MARKET';
 
     if (!isMarketOrder && !price) {
       return {
         status: false,
         message: 'No price',
+      };
+    }
+
+    if (!stopLossPercent) {
+      return {
+        status: false,
+        message: 'No stopLossPercent',
+      };
+    }
+
+    if (!takeProfitPercent) {
+      return {
+        status: false,
+        message: 'No takeProfitPercent',
+      };
+    }
+
+    const limitDate = moment().add(-LIMIT_TIME_FOR_NEXT_TRADE, 'seconds');
+
+    const doesExistUserTradeBound = await UserTradeBound.exists({
+      user_id: userId,
+      instrument_id: instrumentId,
+
+      $or: [{
+        is_active: true,
+      }, {
+        is_active: false,
+
+        trade_ended_at: {
+          $gte: limitDate,
+        },
+      }],
+    });
+
+    if (doesExistUserTradeBound) {
+      return {
+        status: true,
+        isCreated: false,
       };
     }
 
@@ -131,92 +161,27 @@ const createUserTradeBound = async ({
       };
     }
 
-    const resultRequestGetInstrument = await getOneByName({
-      instrumentName,
-    });
-
-    if (!resultRequestGetInstrument) {
-      const message = resultRequestGetInstrument.message || 'Cant getOneByName';
-      log.warn(message);
-
-      return {
-        status: false,
-        message,
-      };
-    }
-
-    const instrumentDoc = resultRequestGetInstrument.result;
-
-    if (!instrumentDoc) {
-      const message = 'No Instrument';
-      log.warn(message);
-
-      return {
-        status: false,
-        message,
-      };
-    }
-
-    const stepSizePrecision = getPrecision(instrumentDoc.step_size);
-    const tickSizePrecision = getPrecision(instrumentDoc.tick_size);
-
     const myBinanceTradeId = randStr(8);
-
-    let validPrice;
-    let validQuantity;
-    let validStopLossPrice;
-
-    if (price) {
-      validPrice = parseFloat((price).toFixed(tickSizePrecision));
-    }
-
-    if (quantity) {
-      validQuantity = parseFloat((quantity).toFixed(stepSizePrecision));
-    }
-
-    if (stopLossPrice) {
-      validStopLossPrice = parseFloat((stopLossPrice).toFixed(tickSizePrecision));
-    }
 
     const newTradeBound = new UserTradeBound({
       user_id: userId,
       instrument_id: instrumentId,
+      strategy_target_id: strategyTargetId,
       user_binance_bound_id: userBinanceBound._id,
 
-      strategy_name: strategyName,
-      strategy_target_id: strategyTargetId,
-
-      quantity: validQuantity,
+      quantity,
       type_trade: typeTrade,
 
       is_active: false,
       is_test: isTestMode,
-
       is_long: side === 'BUY',
-
+      stoploss_percent: stopLossPercent,
+      takeprofit_percent: takeProfitPercent,
       my_binance_trade_id: myBinanceTradeId,
-
-      trade_started_at: new Date(),
     });
 
-    if (isInitiator) {
-      newTradeBound.is_initiator = true;
-    }
-
-    if (!isMarketOrder) {
-      newTradeBound.trigger_price = validPrice;
-    }
-
-    if (stopLossPercent) {
-      newTradeBound.stoploss_percent = stopLossPercent;
-    }
-
-    if (takeProfitPercent) {
-      newTradeBound.takeprofit_percent = takeProfitPercent;
-    }
-
     if (stopLossPrice) {
-      newTradeBound.stoploss_price = validStopLossPrice;
+      newTradeBound.stoploss_price = stopLossPrice;
     }
 
     await newTradeBound.save();
@@ -230,25 +195,16 @@ const createUserTradeBound = async ({
       let signatureStr = `timestamp=${timestamp}`;
 
       const obj = {
-        side,
-        type: typeTrade,
-        newClientOrderId: myBinanceTradeId,
         symbol: instrumentName.replace('PERP', ''),
+        side,
+        type,
+        quantity,
+        newClientOrderId: myBinanceTradeId,
       };
 
       if (!isMarketOrder) {
+        obj.price = price;
         obj.timeInForce = 'GTC';
-      }
-
-      if (typeTrade === TYPES_TRADES.get('STOP_MARKET')) {
-        obj.stopPrice = validPrice;
-        obj.closePosition = true;
-      } else {
-        obj.quantity = validQuantity;
-
-        if (price) {
-          obj.price = validPrice;
-        }
       }
 
       Object.keys(obj).forEach(key => {
@@ -262,28 +218,13 @@ const createUserTradeBound = async ({
 
       signatureStr += `&signature=${signature}`;
 
-      /*
-      const resultRequestNewOrder = {
-        status: true,
-        result: {
-          orderId: randStr(8),
-        },
-      };
-      // */
-
-      // /*
       const resultRequestNewOrder = await newOrder({
         signature,
         signatureStr,
         apikey: userBinanceBound.apikey,
       });
-      // */
 
       if (!resultRequestNewOrder || !resultRequestNewOrder.status) {
-        await UserTradeBound.deleteOne({
-          _id: newTradeBound._id,
-        }).exec();
-
         return {
           status: false,
           message: JSON.stringify(resultRequestNewOrder.message) || 'Cant newOrder',
@@ -293,10 +234,6 @@ const createUserTradeBound = async ({
       const resultNewOrder = resultRequestNewOrder.result;
 
       if (!resultNewOrder) {
-        await UserTradeBound.deleteOne({
-          _id: newTradeBound._id,
-        }).exec();
-
         return {
           status: false,
           message: 'No resultNewOrder',
@@ -306,15 +243,9 @@ const createUserTradeBound = async ({
       orderId = resultNewOrder.orderId;
     }
 
-    const updateObj = {
+    await UserTradeBound.findByIdAndUpdate(newTradeBound._id, {
       binance_trade_id: orderId,
-    };
-
-    if (!isMarketOrder) {
-      updateObj.is_active = true;
-    }
-
-    await UserTradeBound.findByIdAndUpdate(newTradeBound._id, updateObj).exec();
+    }).exec();
 
     return {
       status: true,
