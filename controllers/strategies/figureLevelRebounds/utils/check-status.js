@@ -9,8 +9,8 @@ const {
 } = require('../../../telegram/utils/send-message');
 
 const {
-  getOneByName,
-} = require('../../../instruments/utils/get-one-by-name');
+  cancelUserTradeBound,
+} = require('../../../user-trade-bounds/utils/cancel-user-trade-bound');
 
 const {
   cancelAllUserTradesForInstrument,
@@ -27,7 +27,6 @@ const {
 } = require('../../../user-trade-bounds/constants');
 
 const UserTradeBound = require('../../../../models/UserTradeBound');
-const UserFigureLevelBound = require('../../../../models/UserFigureLevelBound');
 const StrategyFigureLevelRebound = require('../../../../models/StrategyFigureLevelRebound');
 
 const checkStatus = async ({
@@ -206,87 +205,11 @@ const checkStatus = async ({
 
           await userTradeBoundDoc.save();
 
-          const userLevelBoundDoc = await UserFigureLevelBound.findById(strategyDoc.figure_level_bound_id, {
-            is_long: 1,
-            is_active: 1,
-            is_worked: 1,
-            level_price: 1,
-          }).exec();
-
-          if (!userLevelBoundDoc) {
-            return {
-              status: false,
-              message: 'No UserFigureLevelBound',
-            };
-          }
-
-          if (!userLevelBoundDoc.is_active || userLevelBoundDoc.is_worked) {
-            // todo: add logic finish strategy
-            return { status: true };
-          }
-
-          const resultRequestGetInstrument = await getOneByName({
-            instrumentName,
-          });
-
-          if (!resultRequestGetInstrument) {
-            const message = resultRequestGetInstrument.message || 'Cant getOneByName';
-            log.warn(message);
-
-            return {
-              status: false,
-              message,
-            };
-          }
-
-          const instrumentDoc = resultRequestGetInstrument.result;
-
-          if (!instrumentDoc) {
-            const message = 'No Instrument';
-            log.warn(message);
-
-            return {
-              status: false,
-              message,
-            };
-          }
-
           const quantity = userTradeBoundDoc.quantity / strategyDoc.number_trades;
-          const stopLossPrice = userLevelBoundDoc.level_price + instrumentDoc.tick_size;
 
           const arr = [];
           for (let i = 0; i < strategyDoc.number_trades; i += 1) {
             arr.push(i + 1);
-          }
-
-          const resultCreateStopOrder = await createUserTradeBound({
-            userId: userTradeBoundDoc.user_id,
-
-            instrumentName,
-            instrumentId: userTradeBoundDoc.instrument_id,
-
-            strategyName: userTradeBoundDoc.strategy_name,
-            strategyTargetId: strategyDoc._id,
-
-            typeTrade: TYPES_TRADES.get('STOP_MARKET'),
-
-            side: userLevelBoundDoc.is_long ? 'BUY' : 'SELL',
-            quantity,
-
-            price: stopLossPrice,
-          });
-
-          if (!resultCreateStopOrder || !resultCreateStopOrder.status) {
-            const message = resultCreateStopOrder.message || 'Cant createUserTradeBound (stop-order)';
-            log.warn(message);
-
-            await sendMessage(260325716, `Alarm! Cant create SL order:
-    strategyName: ${userTradeBoundDoc.strategy_name}, strategyTargetId: ${strategyDoc._id}`);
-
-            return {
-              status: false,
-              message,
-            };
           }
 
           for await (const iterator of arr) {
@@ -385,6 +308,24 @@ const checkStatus = async ({
               quantity: 1,
             }).exec();
 
+            const resultCancelTrade = await cancelUserTradeBound({
+              userTradeBoundId: activeStopLossOrder._id,
+              instrumentName: instrumentName.replace('PERP', ''),
+            });
+
+            if (!resultCancelTrade || !resultCancelTrade.status) {
+              const message = resultCancelTrade.message || 'Cant cancelUserTradeBound (stop-order)';
+              log.warn(message);
+
+              await sendMessage(260325716, `Alarm! Cant replace SL order:
+      strategyName: ${userTradeBoundDoc.strategy_name}, strategyTargetId: ${strategyDoc._id}`);
+
+              return {
+                status: false,
+                message,
+              };
+            }
+
             const initiatorOrder = await UserTradeBound.findOne({
               is_initiator: true,
               strategy_target_id: strategyDoc._id,
@@ -410,6 +351,7 @@ const checkStatus = async ({
               strategyName: userTradeBoundDoc.strategy_name,
               strategyTargetId: strategyDoc._id,
 
+              isClosePosition: true,
               typeTrade: TYPES_TRADES.get('STOP_MARKET'),
 
               quantity: activeStopLossOrder.quantity,

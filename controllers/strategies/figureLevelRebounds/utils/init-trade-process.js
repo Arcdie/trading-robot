@@ -158,6 +158,7 @@ const initTradeProcess = async ({
       };
     }
 
+    const tickSize = instrumentDoc.tick_size;
     const stepSize = instrumentDoc.step_size;
     const percentPerLevelPrice = userLevelBoundDoc.level_price * (STOPLOSS_PERCENT / 100);
 
@@ -184,8 +185,6 @@ const initTradeProcess = async ({
     }
 
     quantity *= NUMBER_TRADES;
-
-    sendMessage(260325716, `Создал лимитную заявку, ${instrumentName}`);
 
     const resultCreateUserTradeBound = await createUserTradeBound({
       userId: userLevelBoundDoc.user_id,
@@ -215,9 +214,38 @@ const initTradeProcess = async ({
       };
     }
 
+    const stopLossPrice = userLevelBoundDoc.level_price + tickSize;
+
+    const resultCreateStopOrder = await createUserTradeBound({
+      userId: userLevelBoundDoc.user_id,
+      instrumentId,
+      instrumentName,
+
+      strategyName,
+      strategyTargetId,
+
+      isClosePosition: false,
+      typeTrade: TYPES_TRADES.get('STOP_MARKET'),
+
+      side: userLevelBoundDoc.is_long ? 'BUY' : 'SELL',
+      quantity,
+
+      price: stopLossPrice,
+    });
+
+    if (!resultCreateStopOrder || !resultCreateStopOrder.status) {
+      const message = resultCreateStopOrder.message || 'Cant createUserTradeBound (stop-order)';
+      log.warn(message);
+
+      await sendMessage(260325716, `Alarm! Cant create SL order:
+strategyName: ${strategyName}, strategyTargetId: ${strategyDoc._id}`);
+    }
+
     strategyDoc.status += 1;
     strategyDoc.number_trades = NUMBER_TRADES;
     await strategyDoc.save();
+
+    sendMessage(260325716, `Создал лимитную заявку, ${instrumentName}`);
 
     return {
       status: true,

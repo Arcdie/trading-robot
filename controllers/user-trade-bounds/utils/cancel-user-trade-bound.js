@@ -7,8 +7,8 @@ const {
 const log = require('../../../libs/logger')(module);
 
 const {
-  cancelAllOpenOrders,
-} = require('../../binance/utils/futures/cancel-all-open-orders');
+  cancelOrder,
+} = require('../../binance/utils/futures/cancel-order');
 
 const UserTradeBound = require('../../../models/UserTradeBound');
 const UserBinanceBound = require('../../../models/UserBinanceBound');
@@ -35,6 +35,7 @@ const cancelUserTradeBound = async ({
     const userTradeBound = await UserTradeBound.findById(userTradeBoundId, {
       user_id: 1,
       is_active: 1,
+      binance_trade_id: 1,
     }).exec();
 
     if (!userTradeBound) {
@@ -71,6 +72,7 @@ const cancelUserTradeBound = async ({
 
     const obj = {
       symbol: instrumentName,
+      orderId: userTradeBound.binance_trade_id,
     };
 
     Object.keys(obj).forEach(key => {
@@ -84,14 +86,14 @@ const cancelUserTradeBound = async ({
 
     signatureStr += `&signature=${signature}`;
 
-    const resultRequestCancelOrders = await cancelAllOpenOrders({
+    const resultRequestCancelOrder = await cancelOrder({
       signatureStr,
       apikey: userBinanceBound.apikey,
     });
 
-    if (!resultRequestCancelOrders || !resultRequestCancelOrders.status) {
-      const message = resultRequestCancelOrders.message ?
-        JSON.stringify(resultRequestCancelOrders.message) : 'Cant cancelAllOpenOrders (cancel trade)';
+    if (!resultRequestCancelOrder || !resultRequestCancelOrder.status) {
+      const message = resultRequestCancelOrder.message ?
+        JSON.stringify(resultRequestCancelOrder.message) : 'Cant cancelOrder';
       log.warn(message);
 
       return {
@@ -100,10 +102,10 @@ const cancelUserTradeBound = async ({
       };
     }
 
-    const resultCancelOrders = resultRequestCancelOrders.result;
+    const resultCancelOrder = resultRequestCancelOrder.result;
 
-    if (!resultCancelOrders) {
-      const message = 'No result in resultNewOrder (cancel trade)';
+    if (!resultCancelOrder) {
+      const message = 'No result in resultRequestCancelOrder';
       log.warn(message);
 
       return {

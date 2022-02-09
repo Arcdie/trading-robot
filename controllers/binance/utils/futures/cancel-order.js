@@ -8,7 +8,7 @@ const cancelOrder = async ({
 }) => {
   try {
     const resultRequest = await axios({
-      method: 'delete',
+      method: 'DELETE',
       url: `https://fapi.binance.com/fapi/v1/order?${signatureStr}`,
 
       headers: {

@@ -44,6 +44,7 @@ const createUserTradeBound = async ({
   stopLossPrice,
 
   isInitiator,
+  isClosePosition, // for sl
 
   side,
   price,
@@ -242,7 +243,10 @@ const createUserTradeBound = async ({
 
       if (typeTrade === TYPES_TRADES.get('STOP_MARKET')) {
         obj.stopPrice = validPrice;
-        obj.closePosition = true;
+
+        if (isClosePosition) {
+          obj.closePosition = true;
+        }
       } else {
         obj.quantity = validQuantity;
 
