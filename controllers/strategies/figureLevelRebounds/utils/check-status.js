@@ -38,13 +38,6 @@ const checkStatus = async ({
   instrumentName,
 }) => {
   try {
-    if (!price) {
-      return {
-        status: false,
-        message: 'No price',
-      };
-    }
-
     if (!orderType) {
       return {
         status: false,
@@ -105,6 +98,10 @@ const checkStatus = async ({
 
     if (orderType === TYPES_TRADES.get('STOP_MARKET')) {
       if (orderStatus === 'CANCELED') {
+        if (userTradeBoundDoc.remark && userTradeBoundDoc.remark === 'transfer sl') {
+          return { status: true };
+        }
+
         // .. logic with manual reject
 
         strategyDoc.is_active = false;
@@ -296,6 +293,13 @@ const checkStatus = async ({
               };
             }
 
+            // remove not triggered sl
+            await UserTradeBound.deleteOne({
+              is_active: true,
+              strategy_target_id: strategyDoc._id,
+              type_trade: TYPES_TRADES.get('STOP_MARKET'),
+            }).exec();
+
             return { status: true };
           }
 
@@ -304,9 +308,13 @@ const checkStatus = async ({
               strategy_target_id: strategyDoc._id,
               type_trade: TYPES_TRADES.get('STOP_MARKET'),
             }, {
+              remark: 1,
               is_long: 1,
               quantity: 1,
             }).exec();
+
+            activeStopLossOrder.remark = 'transfer sl';
+            await activeStopLossOrder.save();
 
             const resultCancelTrade = await cancelUserTradeBound({
               userTradeBoundId: activeStopLossOrder._id,

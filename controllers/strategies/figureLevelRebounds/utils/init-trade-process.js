@@ -27,7 +27,7 @@ const {
 const UserFigureLevelBound = require('../../../../models/UserFigureLevelBound');
 const StrategyFigureLevelRebound = require('../../../../models/StrategyFigureLevelRebound');
 
-const NUMBER_TRADES = 2; // todo: up to five after tests
+const NUMBER_TRADES = 3; // todo: up to five after tests
 const STOPLOSS_PERCENT = 0.2; // %
 
 const initTradeProcess = async ({

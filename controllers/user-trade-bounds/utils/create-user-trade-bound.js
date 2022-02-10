@@ -246,6 +246,8 @@ const createUserTradeBound = async ({
 
         if (isClosePosition) {
           obj.closePosition = true;
+        } else if (quantity) {
+          obj.quantity = validQuantity;
         }
       } else {
         obj.quantity = validQuantity;
