@@ -247,8 +247,6 @@ strategyName: ${strategyName}, strategyTargetId: ${strategyDoc._id}`);
     strategyDoc.number_trades = NUMBER_TRADES;
     await strategyDoc.save();
 
-    sendMessage(260325716, `Создал лимитную заявку, ${instrumentName}`);
-
     return {
       status: true,
     };

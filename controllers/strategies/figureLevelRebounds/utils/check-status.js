@@ -242,6 +242,8 @@ const checkStatus = async ({
 
           strategyDoc.status += 1;
           await strategyDoc.save();
+
+          sendMessage(260325716, `Сработала лимитная заявка, ${instrumentName}`);
         }
 
         break;
