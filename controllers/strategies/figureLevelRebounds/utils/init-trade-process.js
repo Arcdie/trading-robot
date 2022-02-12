@@ -92,6 +92,7 @@ const initTradeProcess = async ({
       user_id: 1,
       is_active: 1,
       is_worked: 1,
+      is_moderated: 1,
 
       is_long: 1,
       level_price: 1,
@@ -105,6 +106,7 @@ const initTradeProcess = async ({
     }
 
     if (!userLevelBoundDoc.is_active
+      || !userLevelBoundDoc.is_moderated
       || userLevelBoundDoc.is_worked) {
       return { status: true };
     }
