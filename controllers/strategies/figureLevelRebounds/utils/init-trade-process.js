@@ -109,10 +109,6 @@ const initTradeProcess = async ({
       return { status: true };
     }
 
-    if (!userLevelBoundDoc.is_long) {
-      return { status: true };
-    }
-
     const resultRequestGetInstrument = await getOneByName({
       instrumentName,
     });
@@ -163,7 +159,9 @@ const initTradeProcess = async ({
     const stepSize = instrumentDoc.step_size;
     let percentPerLevelPrice = userLevelBoundDoc.level_price * (PERCENT_PER_LEVEL / 100);
 
-    const triggerPrice = userLevelBoundDoc.level_price - percentPerLevelPrice;
+    const triggerPrice = userLevelBoundDoc.is_long ?
+      userLevelBoundDoc.level_price - percentPerLevelPrice :
+      userLevelBoundDoc.level_price + percentPerLevelPrice;
 
     let quantity = WORK_AMOUNT / triggerPrice;
 
@@ -216,7 +214,10 @@ const initTradeProcess = async ({
     }
 
     percentPerLevelPrice = userLevelBoundDoc.level_price * (STOPLOSS_PERCENT / 100);
-    const stopLossPrice = userLevelBoundDoc.level_price + percentPerLevelPrice;
+
+    const stopLossPrice = userLevelBoundDoc.is_long ?
+      userLevelBoundDoc.level_price + percentPerLevelPrice :
+      userLevelBoundDoc.level_price - percentPerLevelPrice;
 
     const resultCreateStopOrder = await createUserTradeBound({
       userId: userLevelBoundDoc.user_id,

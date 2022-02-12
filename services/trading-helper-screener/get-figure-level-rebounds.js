@@ -25,55 +25,6 @@ const {
 const CONNECTION_NAME = 'TradingRobotToTradingHelperScreener:figureLevelRebounds';
 
 module.exports = async () => {
-  /*
-  try {
-    setTimeout(async () => {
-      const resultInit = await initTradeProcess({
-        instrumentId: '616f0f7290a7836ed8d5e23d',
-        instrumentName: 'NKNUSDTPERP',
-
-        strategyName: 'figureLevelRebound',
-        strategyTargetId: '62024b149172c74f87633655',
-      });
-
-      if (!resultInit || !resultInit.status) {
-        console.log(resultInit);
-      }
-    }, 3000);
-    */
-
-    /*
-    const resultChestStatus = await checkStatus({
-      orderType: 'LIMIT',
-      orderStatus: 'FILLED',
-      price: parseFloat(1193.4),
-      userTradeBoundId: '620242e7b65f255889243444',
-
-      instrumentName: 'BTCDOMUSDTPERP',
-    });
-
-    if (!resultChestStatus || !resultChestStatus.status) {
-      log.warn(resultChestStatus.message || 'Cant figureLevelReboundsUtils.checkStatus');
-    }
-
-
-    const resultCheckStatus = await checkStatus({
-      orderType: 'LIMIT',
-      orderStatus: 'FILLED',
-      price: parseFloat(1230.8),
-      userTradeBoundId: '620244a5c796bd8c11143ee4',
-
-      instrumentName: 'BTCDOMUSDTPERP',
-    });
-
-    if (!resultCheckStatus || !resultCheckStatus.status) {
-      log.warn(resultCheckStatus.message || 'Cant figureLevelReboundsUtils.checkStatus');
-    }
-  } catch (error) {
-    console.log('error', error);
-  }
-  */
-
   // /*
   try {
     let sendPongInterval;
@@ -133,4 +84,53 @@ module.exports = async () => {
     return false;
   }
   // */
+
+  /*
+  try {
+    setTimeout(async () => {
+      const resultInit = await initTradeProcess({
+        instrumentId: '616f0f7290a7836ed8d5e23d',
+        instrumentName: 'NKNUSDTPERP',
+
+        strategyName: 'figureLevelRebound',
+        strategyTargetId: '62024b149172c74f87633655',
+      });
+
+      if (!resultInit || !resultInit.status) {
+        console.log(resultInit);
+      }
+    }, 3000);
+    */
+
+    /*
+    const resultChestStatus = await checkStatus({
+      orderType: 'LIMIT',
+      orderStatus: 'FILLED',
+      price: parseFloat(1193.4),
+      userTradeBoundId: '620242e7b65f255889243444',
+
+      instrumentName: 'BTCDOMUSDTPERP',
+    });
+
+    if (!resultChestStatus || !resultChestStatus.status) {
+      log.warn(resultChestStatus.message || 'Cant figureLevelReboundsUtils.checkStatus');
+    }
+
+
+    const resultCheckStatus = await checkStatus({
+      orderType: 'LIMIT',
+      orderStatus: 'FILLED',
+      price: parseFloat(1230.8),
+      userTradeBoundId: '620244a5c796bd8c11143ee4',
+
+      instrumentName: 'BTCDOMUSDTPERP',
+    });
+
+    if (!resultCheckStatus || !resultCheckStatus.status) {
+      log.warn(resultCheckStatus.message || 'Cant figureLevelReboundsUtils.checkStatus');
+    }
+  } catch (error) {
+    console.log('error', error);
+  }
+  */
 };
