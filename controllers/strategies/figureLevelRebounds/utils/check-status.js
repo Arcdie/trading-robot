@@ -29,6 +29,8 @@ const {
 const UserTradeBound = require('../../../../models/UserTradeBound');
 const StrategyFigureLevelRebound = require('../../../../models/StrategyFigureLevelRebound');
 
+const STOPLOSS_PERCENT = 0.5; // %
+
 const checkStatus = async ({
   price,
   orderType,
@@ -204,10 +206,9 @@ const checkStatus = async ({
 
           const quantity = userTradeBoundDoc.quantity / strategyDoc.number_trades;
 
-          const arr = [];
-          for (let i = 0; i < strategyDoc.number_trades; i += 1) {
-            arr.push(i + 1);
-          }
+          // todo: get constants
+          // fot 6: 1.5, 3, 4.5
+          const arr = [STOPLOSS_PERCENT * 3, STOPLOSS_PERCENT * 6, STOPLOSS_PERCENT * 9];
 
           for await (const iterator of arr) {
             const sumPerInitiatorTriggerPrice = userTradeBoundDoc.trigger_price * (iterator / 100);
@@ -227,7 +228,7 @@ const checkStatus = async ({
 
               typeTrade: TYPES_TRADES.get('LIMIT'),
 
-              quantity,
+              quantity: quantity * 2,
               side: userTradeBoundDoc.is_long ? 'SELL' : 'BUY',
 
               price: triggerPrice,
@@ -313,6 +314,7 @@ const checkStatus = async ({
               remark: 1,
               is_long: 1,
               quantity: 1,
+              trigger_price: 1,
             }).exec();
 
             activeStopLossOrder.remark = 'transfer sl';
@@ -336,6 +338,7 @@ const checkStatus = async ({
               };
             }
 
+            /*
             const initiatorOrder = await UserTradeBound.findOne({
               is_initiator: true,
               strategy_target_id: strategyDoc._id,
@@ -351,6 +354,7 @@ const checkStatus = async ({
             const stopLossPrice = activeStopLossOrder.is_long ?
               initiatorOrder.trigger_price - fullSumCommisions :
               initiatorOrder.trigger_price + fullSumCommisions;
+            */
 
             const resultCreateStopOrder = await createUserTradeBound({
               userId: userTradeBoundDoc.user_id,
@@ -367,7 +371,7 @@ const checkStatus = async ({
               quantity: activeStopLossOrder.quantity,
               side: activeStopLossOrder.is_long ? 'BUY' : 'SELL',
 
-              price: stopLossPrice,
+              price: activeStopLossOrder,
             });
 
             if (!resultCreateStopOrder || !resultCreateStopOrder.status) {
