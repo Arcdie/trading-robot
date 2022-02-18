@@ -338,7 +338,6 @@ const checkStatus = async ({
               };
             }
 
-            /*
             const initiatorOrder = await UserTradeBound.findOne({
               is_initiator: true,
               strategy_target_id: strategyDoc._id,
@@ -354,7 +353,6 @@ const checkStatus = async ({
             const stopLossPrice = activeStopLossOrder.is_long ?
               initiatorOrder.trigger_price - fullSumCommisions :
               initiatorOrder.trigger_price + fullSumCommisions;
-            */
 
             const resultCreateStopOrder = await createUserTradeBound({
               userId: userTradeBoundDoc.user_id,
@@ -371,7 +369,7 @@ const checkStatus = async ({
               quantity: activeStopLossOrder.quantity,
               side: activeStopLossOrder.is_long ? 'BUY' : 'SELL',
 
-              price: activeStopLossOrder,
+              price: stopLossPrice,
             });
 
             if (!resultCreateStopOrder || !resultCreateStopOrder.status) {
