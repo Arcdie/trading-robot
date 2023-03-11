@@ -27,7 +27,7 @@ const {
 const UserFigureLevelBound = require('../../../../models/UserFigureLevelBound');
 const StrategyFigureLevelRebound = require('../../../../models/StrategyFigureLevelRebound');
 
-const NUMBER_TRADES = 6;
+const NUMBER_TRADES = 7;
 const STOPLOSS_PERCENT = 0.2; // %
 const PERCENT_PER_LEVEL = 0.3; // %;
 
@@ -161,9 +161,9 @@ const initTradeProcess = async ({
     const stepSize = instrumentDoc.step_size;
     let percentPerLevelPrice = userLevelBoundDoc.level_price * (PERCENT_PER_LEVEL / 100);
 
-    const triggerPrice = userLevelBoundDoc.is_long ?
-      userLevelBoundDoc.level_price - percentPerLevelPrice :
-      userLevelBoundDoc.level_price + percentPerLevelPrice;
+    const triggerPrice = userLevelBoundDoc.is_long
+      ? userLevelBoundDoc.level_price - percentPerLevelPrice
+      : userLevelBoundDoc.level_price + percentPerLevelPrice;
 
     let quantity = WORK_AMOUNT / triggerPrice;
 
@@ -217,9 +217,9 @@ const initTradeProcess = async ({
 
     percentPerLevelPrice = userLevelBoundDoc.level_price * (STOPLOSS_PERCENT / 100);
 
-    const stopLossPrice = userLevelBoundDoc.is_long ?
-      userLevelBoundDoc.level_price + percentPerLevelPrice :
-      userLevelBoundDoc.level_price - percentPerLevelPrice;
+    const stopLossPrice = userLevelBoundDoc.is_long
+      ? userLevelBoundDoc.level_price + percentPerLevelPrice
+      : userLevelBoundDoc.level_price - percentPerLevelPrice;
 
     const resultCreateStopOrder = await createUserTradeBound({
       userId: userLevelBoundDoc.user_id,

@@ -29,8 +29,6 @@ const {
 const UserTradeBound = require('../../../../models/UserTradeBound');
 const StrategyFigureLevelRebound = require('../../../../models/StrategyFigureLevelRebound');
 
-const STOPLOSS_PERCENT = 0.5; // %
-
 const checkStatus = async ({
   price,
   orderType,
@@ -208,10 +206,23 @@ const checkStatus = async ({
 
           // todo: get constants
           // fot 6: 1.5, 3, 4.5
-          const arr = [STOPLOSS_PERCENT * 3, STOPLOSS_PERCENT * 6, STOPLOSS_PERCENT * 9];
+          // fot 7: 1.75, 3.5, 5.25, 8.75
+          const iterations = [{
+            percent: 1.75,
+            quantity: quantity * 2,
+          }, {
+            percent: 3.5,
+            quantity: quantity * 2,
+          }, {
+            percent: 5.25,
+            quantity: quantity * 2,
+          }, {
+            percent: 8.75,
+            quantity,
+          }];
 
-          for await (const iterator of arr) {
-            const sumPerInitiatorTriggerPrice = userTradeBoundDoc.trigger_price * (iterator / 100);
+          for await (const iteration of iterations) {
+            const sumPerInitiatorTriggerPrice = userTradeBoundDoc.trigger_price * (iteration.percent / 100);
 
             const triggerPrice = userTradeBoundDoc.is_long ?
               userTradeBoundDoc.trigger_price + sumPerInitiatorTriggerPrice :
@@ -228,7 +239,7 @@ const checkStatus = async ({
 
               typeTrade: TYPES_TRADES.get('LIMIT'),
 
-              quantity: quantity * 2,
+              quantity: iteration.quantity,
               side: userTradeBoundDoc.is_long ? 'SELL' : 'BUY',
 
               price: triggerPrice,
@@ -263,8 +274,10 @@ const checkStatus = async ({
           userTradeBoundDoc.trade_ended_at = new Date();
           userTradeBoundDoc.type_exit = TYPES_EXIT.get('AUTO');
 
-          const sumCommission = COMMISSIONS.get(TYPES_TRADES.get('LIMIT'));
-          userTradeBoundDoc.sum_commission = parseFloat((price * (sumCommission / 100)).toFixed(3));
+          const percentCommission = COMMISSIONS.get(TYPES_TRADES.get('LIMIT'));
+          const sumTrade = userTradeBoundDoc.quantity * price;
+
+          userTradeBoundDoc.sum_commission = parseFloat((sumTrade * (percentCommission / 100)).toFixed(3));
 
           if (userTradeBoundDoc.is_long) {
             userTradeBoundDoc.buy_price = price;
@@ -306,7 +319,8 @@ const checkStatus = async ({
             return { status: true };
           }
 
-          if (strategyDoc.number_trades - numberActiveLimitTrades === 1) {
+          // for 7 trades version
+          if (numberActiveLimitTrades === 3) {
             const activeStopLossOrder = await UserTradeBound.findOne({
               strategy_target_id: strategyDoc._id,
               type_trade: TYPES_TRADES.get('STOP_MARKET'),
@@ -348,11 +362,18 @@ const checkStatus = async ({
               sum_commission: 1,
             }).exec();
 
-            const fullSumCommisions = initiatorOrder.sum_commission * 3;
+            let stopLossPrice = activeStopLossOrder.is_long ?
+              initiatorOrder.trigger_price - initiatorOrder.sum_commission :
+              initiatorOrder.trigger_price + initiatorOrder.sum_commission;
 
-            const stopLossPrice = activeStopLossOrder.is_long ?
-              initiatorOrder.trigger_price - fullSumCommisions :
-              initiatorOrder.trigger_price + fullSumCommisions;
+            const percentCommission = COMMISSIONS.get(TYPES_TRADES.get('MARKET'));
+            const sumTrade = initiatorOrder.quantity * stopLossPrice;
+
+            const percentPerSumTrade = (sumTrade * (percentCommission / 100));
+
+            stopLossPrice = activeStopLossOrder.is_long ?
+              stopLossPrice - percentPerSumTrade :
+              stopLossPrice + percentPerSumTrade;
 
             const resultCreateStopOrder = await createUserTradeBound({
               userId: userTradeBoundDoc.user_id,
